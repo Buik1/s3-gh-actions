@@ -1,0 +1,37 @@
+name: Deploy to S3
+on: [push]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Verify Files
+        run: |
+          echo "=== WORKSPACE CONTENTS ==="
+          ls -R
+          echo "=== INDEX.HTML ==="
+          cat index.html || echo "No index.html found"
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
+
+      - name: Sync to S3
+        run: |
+          echo "Starting sync to: mys3-gh-actions"
+          aws s3 sync ./ s3://mys3-gh-actions \
+            --delete \
+            --exclude ".git/*" \
+            --exclude ".github/*" \
+            --no-progress \
+            --acl public-read
+          
+          echo "=== BUCKET CONTENTS ==="
+          aws s3 ls s3://mys3-gh-actions --recursive --human-readable
