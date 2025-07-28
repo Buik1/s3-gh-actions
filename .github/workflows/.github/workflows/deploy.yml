@@ -1,0 +1,29 @@
+name: Deploy to S3
+on: [push]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
+
+      - name: Upload to S3 (ACL-Free)
+        run: |
+          # Pure bucket-policy based upload
+          aws s3 sync ./ s3://mys3-gh-actions \
+            --delete \
+            --exclude ".git/*" \
+            --exclude ".github/*" \
+            --no-progress \
+            --no-guess-mime-type \
+            --cache-control "max-age=3600"  # Optional cache setting
+          
+          echo "=== Verification ==="
+          aws s3 ls s3://mys3-gh-actions --recursive --human-readable
