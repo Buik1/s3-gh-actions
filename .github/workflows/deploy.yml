@@ -1,37 +1,39 @@
-name: Deploy to S3
-on: [push]
+name: Deploy to S3 (ACL-Free & Optimized)
+
+on:
+  push:
+    branches:
+      - main  # Change this if you're using a different branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - name: Verify Files
-        run: |
-          echo "=== WORKSPACE CONTENTS ==="
-          ls -R
-          echo "=== INDEX.HTML ==="
-          cat index.html || echo "No index.html found"
-
-      - name: Configure AWS
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-north-1
 
-      - name: Sync to S3
+      - name: Show AWS CLI Version
+        run: aws --version
+
+      - name: Sync to S3 (Bucket Owner Enforced ACL)
         run: |
-          echo "Starting sync to: mys3-gh-actions"
           aws s3 sync ./ s3://mys3-gh-actions \
+            --acl bucket-owner-full-control \
             --delete \
             --exclude ".git/*" \
             --exclude ".github/*" \
+            --exclude "*.rst" \
             --no-progress \
-            --acl public-read
-          
-          echo "=== BUCKET CONTENTS ==="
+            --no-guess-mime-type \
+            --cache-control "max-age=3600"
+
+          echo "=== Files in S3 Bucket ==="
           aws s3 ls s3://mys3-gh-actions --recursive --human-readable
